@@ -1,9 +1,17 @@
 # PCY Algorithm
 from collections import Counter
 from itertools import combinations
+import json
 
 def hash_bucket(itemset, num_buckets):
     return hash(itemset) % num_buckets
+
+def create_transactions(data):
+    transactions = []
+    for item in data:
+        transaction = [item['asin']] + item.get('related', [])
+        transactions.append(transaction)
+    return transactions
 
 def pcy_algorithm(transactions, num_buckets, hash_support, min_support):
     # First pass: Count pairs in baskets
@@ -34,6 +42,10 @@ def pcy_algorithm(transactions, num_buckets, hash_support, min_support):
     return frequent_items, frequent_pairs, pair_counts
 
 # Example usage
+with open('preprocessed_dataset.json', 'r') as file:
+    data = json.load(file)
+
+transactions = create_transactions(data)
 num_buckets = 10
 hash_support = 2
 min_support = 2

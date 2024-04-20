@@ -8,6 +8,7 @@ def create_transactions(data):
         transactions.append(transaction)
     return transactions
 
+
 def find_frequent_pairs(transactions, min_support):
     pair_counts = {}
     total_transactions = len(transactions)

@@ -1,7 +1,51 @@
-from itertools import combinations
 import json
+from collections import defaultdict, deque
+from itertools import combinations
 
-def create_transactions(data):
+# Define the SlidingWindow class
+class AprioriSlidingWindow:
+    def __init__(self, size=100):
+        self.window = deque()
+        self.size = size
+        self.itemsets = defaultdict(int)
+
+    def add_transaction(self, transaction):
+        if len(self.window) >= self.size:
+            self.remove_transaction()
+        self.window.append(transaction)
+        self.update_counts(transaction, 1)
+
+    def remove_transaction(self):
+        old_transaction = self.window.popleft()
+        self.update_counts(old_transaction, -1)
+
+    def update_counts(self, transaction, increment):
+        max_length = 4  # Adjust this value based on the expected complexity
+        for r in range(1, min(max_length + 1, len(transaction) + 1)):
+            for itemset in combinations(transaction, r):
+                self.itemsets[itemset] += increment
+                if self.itemsets[itemset] <= 0:
+                    del self.itemsets[itemset]
+
+    def generate_itemsets(self, transactions, min_support):
+        pair_counts = {}
+        total_transactions = len(transactions)
+        for transaction in transactions:
+            for item1, item2 in combinations(set(transaction), 2):
+                pair = frozenset([item1, item2])
+                if pair in pair_counts:
+                    pair_counts[pair] += 1
+                else:
+                    pair_counts[pair] = 1
+
+    # Apply minimum support threshold
+        return {pair: count for pair, count in pair_counts.items() if count >= min_support}
+        
+
+
+def read_transactions_from_json(file_path):
+    with open(file_path, "r") as file:
+        data = json.load(file)
     transactions = []
     for item in data:
         transaction = [item['asin']] + item.get('related', [])
@@ -9,20 +53,7 @@ def create_transactions(data):
     return transactions
 
 
-def find_frequent_pairs(transactions, min_support):
-    pair_counts = {}
-    total_transactions = len(transactions)
-    for transaction in transactions:
-        for item1, item2 in combinations(set(transaction), 2):
-            pair = frozenset([item1, item2])
-            if pair in pair_counts:
-                pair_counts[pair] += 1
-            else:
-                pair_counts[pair] = 1
-
-    # Apply minimum support threshold
-    return {pair: count for pair, count in pair_counts.items() if count >= min_support}
-
+    
 def generate_association_rules(frequent_pairs, transactions, min_confidence):
     total_transactions = len(transactions)
     rules = set()  # Using a set to store rules to avoid duplicates
@@ -48,30 +79,37 @@ def generate_association_rules(frequent_pairs, transactions, min_confidence):
 
     return rules
 
-# Example usage with the rest of the code remains the same
+# Calculate frequent itemsets
+data_path = "preprocessed_dataset.json"
+output_path = "output.txt"
 
+# Read transactions
+transactions = read_transactions_from_json(data_path)
 
-with open('preprocessed_dataset.json', 'r') as file:
-    json_data = json.load(file)
-    # reading the first 5 records
-    # json_data = json_data[:100]
+if not transactions:
+    print("No transactions loaded.")
+else:
+    sliding_window = AprioriSlidingWindow(size=100)
+    for transaction in transactions:
+        sliding_window.add_transaction(transaction)
+
+    min_support = 2
+    frequent_itemsets = sliding_window.generate_itemsets(transactions, min_support)
+    print(f"Frequent Itemsets: {frequent_itemsets}")
+
+    # save results to a file
+    with open(output_path, "w") as file:
+        file.write("Itemset\tSupport\n")
+        for itemset, support in frequent_itemsets.items():
+            file.write(f"{itemset}\t{support}\n")
+
+    # Minimum confidence for association rules
+    min_confidence = 0.5
     
-
-transactions = create_transactions(json_data)
-min_support = 2
-frequent_pairs = find_frequent_pairs(transactions, min_support)
-
-min_confidence = 0.5
-rules = generate_association_rules(frequent_pairs, transactions, min_confidence)
-
-# Output results in a txt file
-output_file = 'frequent_itemsets.txt'
-with open(output_file, 'w') as file:
-    # file.write("Frequent Itemsets:\n")
-    # for pair, support in frequent_pairs.items():
-    #     file.write(f"{pair}: {support}\n")
-
-    file.write("\nAssociation Rules:\n")
-    for antecedent, consequent, confidence in rules:
-        file.write(f"Rule: {antecedent} -> {consequent} (Confidence: {confidence:.2f})\n")
-
+    # Generate association rules
+    association_rules = generate_association_rules(frequent_itemsets, transactions, min_confidence)        
+    # save results to a file
+    with open("association_rules.txt", "w") as file:
+        file.write("Antecedent\tConsequent\tConfidence\n")
+        for antecedent, consequent, confidence in association_rules:
+            file.write(f"{antecedent}\t{consequent}\t{confidence:.2f}\n")

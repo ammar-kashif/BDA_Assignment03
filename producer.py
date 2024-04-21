@@ -2,7 +2,7 @@ from kafka import KafkaProducer
 import json
 import time
 
-def produce_dataset(file_path, producer, topics, num_objects=10):
+def produce_dataset(file_path, producer, topics, num_objects=20):
     try:
         with open(file_path, "r") as file:
             data = json.load(file)

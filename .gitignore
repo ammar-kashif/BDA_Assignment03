@@ -7,4 +7,4 @@ output.txt
 association_rules.txt
 first_100_rows.json
 test.ipynb
-PCY_frequent_itemsets.txt
+output/

@@ -3,109 +3,96 @@ import json
 from collections import Counter
 from itertools import combinations
 
-def hash_bucket(itemset, num_buckets):
-    return hash(itemset) % num_buckets
+class SlidingPCY:
+    def __init__(self, num_buckets, hash_support, min_support, window_size):
+        self.num_buckets = num_buckets
+        self.hash_support = hash_support
+        self.min_support = min_support
+        self.window_size = window_size
+        self.single_counts = Counter()
+        self.pair_counts = Counter()
+        self.triplet_counts = Counter()
+        self.hash_table = [0] * num_buckets
+        self.window = []
 
-def add_transaction(transaction, window, hash_table, num_buckets, hash_support, single_counts, pair_counts, triplet_counts):
-    window.append(transaction)
-    for item in transaction:
-        if isinstance(item, str):  # Ensure item is a string
-            single_counts[item] += 1
-        else:
-            print(f"Ignoring invalid item: {item}")
-    for pair in combinations(transaction, 2):
-        bucket = hash_bucket(pair, num_buckets)
-        hash_table[bucket] += 1
-        if hash_table[bucket] >= hash_support:
-            pair_counts[pair] += 1
-    for triplet in combinations(transaction, 3):
-        if all(pair in pair_counts for pair in combinations(triplet, 2)):
-            triplet_counts[triplet] += 1
+    def hash_bucket(self, itemset):
+        return hash(itemset) % self.num_buckets
 
-
-def remove_transaction(transaction, window, hash_table, num_buckets, hash_support, single_counts, pair_counts, triplet_counts):
-    window.remove(transaction)
-    for item in transaction:
-        single_counts[item] -= 1
-    for pair in combinations(transaction, 2):
-        bucket = hash_bucket(pair, num_buckets)
-        hash_table[bucket] -= 1
-        if hash_table[bucket] >= hash_support:
-            pair_counts[pair] -= 1
+    def add_transaction(self, transaction):
+        self.window.append(transaction)
+        for item in transaction:
+            self.single_counts[item] += 1
+        for pair in combinations(transaction, 2):
+            bucket = self.hash_bucket(pair)
+            self.hash_table[bucket] += 1
+            if self.hash_table[bucket] >= self.hash_support:
+                self.pair_counts[pair] += 1
         for triplet in combinations(transaction, 3):
-            triplet_counts[triplet] -= 1
+            if all(self.pair_counts[pair] >= self.min_support for pair in combinations(triplet, 2)):
+                self.triplet_counts[triplet] += 1
 
-def update_window(window, window_size, hash_table, num_buckets, hash_support, single_counts, pair_counts, triplet_counts):
-    if len(window) > window_size:
-        old_transaction = window.pop(0)
-        remove_transaction(old_transaction, window, hash_table, num_buckets, hash_support, single_counts, pair_counts, triplet_counts)
-        # Remove triplets containing items from the removed transaction
-        for triplet in combinations(old_transaction, 3):
-            triplet_counts[triplet] -= 1
+    def remove_transaction(self, transaction):
+        self.window.remove(transaction)
+        for item in transaction:
+            self.single_counts[item] -= 1
+        for pair in combinations(transaction, 2):
+            bucket = self.hash_bucket(pair)
+            self.hash_table[bucket] -= 1
+            self.pair_counts[pair] -= 1
+        for triplet in combinations(transaction, 3):
+            self.triplet_counts[triplet] -= 1
 
-def pcy_sliding_window(consumer, num_buckets, hash_support, min_support, window_size):
-    single_counts = Counter()
-    pair_counts = Counter()
-    triplet_counts = Counter()
-    hash_table = [0] * num_buckets
-    window = []
-
-    print("PCY Sliding Window Consumer started.")
-
-    for message in consumer:
-        print("Received message from Kafka topic.")
-        dataset = json.loads(message.value.decode('utf-8'))
-        transactions = []
-        for item in dataset:
-            # Getting the asin and related items for each transaction
-            transaction = [item["asin"]] + item.get("related", [])
-            transactions.append(transaction)
-        print("Transactions extracted from the dataset.")
-
+    def process_transactions(self, transactions):
         for transaction in transactions:
-            add_transaction(transaction, window, hash_table, num_buckets, hash_support, single_counts, pair_counts, triplet_counts)
-            update_window(window, window_size, hash_table, num_buckets, hash_support, single_counts, pair_counts, triplet_counts)
+            self.add_transaction(transaction)
+            if len(self.window) > self.window_size:
+                self.remove_transaction(self.window[0])
 
-        frequent_singles = {item for item, count in single_counts.items() if count >= min_support}
-        frequent_pairs = {pair for pair, count in pair_counts.items() if count >= min_support}
-        frequent_triplets = {triplet for triplet, count in triplet_counts.items() if count >= min_support}
+        return (self.filter_items(self.single_counts), 
+                self.filter_items(self.pair_counts),
+                self.filter_items(self.triplet_counts))
 
-        print("PCY Sliding Window algorithm completed.")
+    def filter_items(self, counts):
+        return {itemset: count for itemset, count in counts.items() if count >= self.min_support}
 
-        return frequent_singles, frequent_pairs, frequent_triplets
+def consume_dataset(consumer, sliding_pcy):
+    for message in consumer:
+        dataset = json.loads(message.value.decode('utf-8'))
+        transactions = [[item["asin"]] + item.get("related", []) for item in dataset]
+        frequent_singles, frequent_pairs, frequent_triplets = sliding_pcy.process_transactions(transactions)
 
-# Kafka settings
+        # Output results
+        output_results(frequent_singles, frequent_pairs, frequent_triplets)
+
+def output_results(singles, pairs, triplets):
+    output_path = 'output/pcy_frequent_itemsets.txt'
+
+    # Clear output file when consumer starts
+    with open(output_path, "w") as file:
+        file.write("")
+
+    with open(output_path, 'w') as file:
+        file.write("Frequent Singles:\n")
+        for item, count in singles.items():
+            file.write(f"{item}\t{count}\n")
+
+        file.write("\nFrequent Pairs:\n")
+        for pair, count in pairs.items():
+            file.write(f"{pair}\t{count}\n")
+
+        file.write("\nFrequent Triplets:\n")
+        for triplet, count in triplets.items():
+            file.write(f"{triplet}\t{count}\n")
+
+    print("Results saved to", output_path)
+
+# Kafka settings and consumer initialization
 bootstrap_servers = 'localhost:9092'
-pcy_topic = 'PCY'
+topic = 'PCY'
+consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers)
 
-# Create Kafka consumer
-consumer = KafkaConsumer(pcy_topic, bootstrap_servers=bootstrap_servers)
+# Create SlidingPCY instance and consume dataset
+sliding_pcy = SlidingPCY(num_buckets=10, hash_support=2, min_support=3, window_size=100)
 
-# Parameters
-num_buckets = 10
-hash_support = 2
-min_support = 3
-window_size = 100
-
-# Execute PCY sliding window algorithm
-frequent_singles, frequent_pairs, frequent_triplets = pcy_sliding_window(consumer, num_buckets, hash_support, min_support, window_size)
-
-# Output results in a txt file
-output_file = 'output/pcy_frequent_itemsets.txt'
-with open(output_file, 'w') as file:
-    file.write("Frequent Singles:\n")
-    for item in frequent_singles:
-        file.write(f"{item}\n")
-
-    file.write("\nFrequent Pairs:\n")
-    for pair in frequent_pairs:
-        file.write(f"{pair}\n")
-
-    file.write("\nFrequent Triplets:\n")
-    for triplet in frequent_triplets:
-        file.write(f"{triplet}\n")
-
-print("Results saved to", output_file)
-
-# Close the consumer when done
-consumer.close()
+while True:
+    consume_dataset(consumer, sliding_pcy)

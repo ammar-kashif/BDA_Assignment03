@@ -98,8 +98,10 @@ consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers)
 # Output path for saving frequent itemsets
 output_path = 'output/apriori_frequent_itemsets.txt'
 
-# Consume dataset and generate frequent itemsets
-consume_dataset(consumer, output_path)
+# Clear output file when consumer starts
+with open(output_path, "w") as file:
+    file.write("")
 
-# Close the consumer when done
-consumer.close()
+# Consume dataset and generate frequent itemsets
+while True:
+    consume_dataset(consumer, output_path)

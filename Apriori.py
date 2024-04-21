@@ -90,7 +90,7 @@ def generate_association_rules(freq_pairs, transactions, min_confidence):
 
 
 # Calculating frequent itemsets
-data_path = "preprocessed_dataset1.json"
+data_path = "first_100_rows.json"
 output_path = "output.txt"
 
 # Read transactions
@@ -104,6 +104,7 @@ else:
         sliding_window.add_transaction(transaction)
 
     min_supp = 2
+    
     frequent_itemsets = sliding_window.generate_itemsets(transactions, min_supp)
     print(f"Frequent Itemsets: {frequent_itemsets}")
 
@@ -123,6 +124,6 @@ else:
     # Saving the rules to a file
     with open("association_rules.txt", "w") as file:
         file.write("If\tThen\tConfidence\n")
-    for if_item, then_item, confidence in association_rules:
-        file.write(f"{if_item}\t{then_item}\t{confidence:.2f}\n")
+        for if_item, then_item, confidence in association_rules:
+            file.write(f"{if_item}\t{then_item}\t{confidence:.2f}\n")
 

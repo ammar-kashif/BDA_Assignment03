@@ -3,4 +3,5 @@ Sampled_Amazon_Meta.json
 README.md
 preprocessed_dataset.json
 preprocessed_dataset1.json
-Apriori_and_PCY.ipynb
+output.txt
+asscociation_rules.txt

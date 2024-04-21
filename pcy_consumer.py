@@ -94,5 +94,6 @@ consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers)
 # Create SlidingPCY instance and consume dataset
 sliding_pcy = SlidingPCY(num_buckets=10, hash_support=2, min_support=3, window_size=100)
 
-while True:
-    consume_dataset(consumer, sliding_pcy)
+consume_dataset(consumer, sliding_pcy)
+
+consumer.close()

@@ -29,13 +29,13 @@ def produce_dataset(file_path, producer, topics, num_objects=20):
 # Kafka settings
 bootstrap_servers = 'localhost:9092'
 # apriori_topic = 'PCY_topic'
-topics = ['Apriori', 'PCY']
+topics = ['Apriori', 'PCY', 'Custom']
 
 # Create Kafka producer
 producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 
 # Path to the dataset file
-dataset_file = 'preprocessed_dataset.json'
+dataset_file = 'data/preprocessed_dataset.json'
 
 # Infinite loop to continuously send the dataset
 while True:

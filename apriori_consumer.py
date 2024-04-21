@@ -103,5 +103,6 @@ with open(output_path, "w") as file:
     file.write("")
 
 # Consume dataset and generate frequent itemsets
-while True:
-    consume_dataset(consumer, output_path)
+consume_dataset(consumer, output_path)
+
+consumer.close()

@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict, deque
-from itertools import combinations
+from itertools import combinations, permutations
 
 # Define the SlidingWindow class
 class AprioriSlidingWindow:
@@ -27,19 +27,19 @@ class AprioriSlidingWindow:
                 if self.itemsets[itemset] <= 0:
                     del self.itemsets[itemset]
 
-    def generate_itemsets(self, transactions, min_support):
-        pair_counts = {}
-        total_transactions = len(transactions)
-        for transaction in transactions:
-            for item1, item2 in combinations(set(transaction), 2):
-                pair = frozenset([item1, item2])
-                if pair in pair_counts:
-                    pair_counts[pair] += 1
-                else:
-                    pair_counts[pair] = 1
+    def generate_itemsets(self ,transactions, min_support, max_length = 3):
+        itemset_counts = defaultdict(int)
 
-    # Apply minimum support threshold
-        return {pair: count for pair, count in pair_counts.items() if count >= min_support}
+        # Count occurrences of each itemset
+        for transaction in transactions:
+            for r in range(1, max_length + 1):
+                for itemset in combinations(transaction, r):
+                    itemset_counts[itemset] += 1
+
+        # Filter itemsets based on minimum support
+        frequent_itemsets = {itemset: count for itemset, count in itemset_counts.items() if count >= min_support}
+        return frequent_itemsets
+
         
 
 
@@ -62,20 +62,15 @@ def generate_association_rules(frequent_pairs, transactions, min_confidence):
 
     for pair, pair_support in item_support.items():
         items = list(pair)
-        item1, item2 = sorted(items)  # Sort items to ensure consistent order
-        # Support of individual items
-        support1 = sum(1 for t in transactions if item1 in t) / total_transactions
-        support2 = sum(1 for t in transactions if item2 in t) / total_transactions
-
-        # Confidence calculations
-        confidence1to2 = pair_support / support1
-        confidence2to1 = pair_support / support2
-
-        # Only add rule if confidence is high enough and not already added
-        if confidence1to2 >= min_confidence:
-            rules.add((item1, item2, confidence1to2))  # Add sorted rule
-        if confidence2to1 >= min_confidence and (item2, item1) not in rules:
-            rules.add((item2, item1, confidence2to1))  # Check if reverse isn't already added
+        for i in range(1, len(items)):
+            for antecedent in permutations(items, i):  # Generate all permutations of items
+                antecedent = tuple(sorted(antecedent))
+                consequent = tuple(sorted(set(items) - set(antecedent)))
+                antecedent_support = frequent_pairs.get(antecedent, 0) / total_transactions
+                if antecedent_support > 0:
+                    confidence = pair_support / antecedent_support
+                    if confidence >= min_confidence:
+                        rules.add((antecedent, consequent, confidence))
 
     return rules
 
@@ -113,3 +108,5 @@ else:
         file.write("Antecedent\tConsequent\tConfidence\n")
         for antecedent, consequent, confidence in association_rules:
             file.write(f"{antecedent}\t{consequent}\t{confidence:.2f}\n")
+            
+    print(f"Results saved to {output_path} and association_rules.txt")

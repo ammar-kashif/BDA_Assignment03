@@ -76,7 +76,7 @@ def pcy_sliding_window(consumer, num_buckets, hash_support, min_support, window_
 
 # Kafka settings
 bootstrap_servers = 'localhost:9092'
-pcy_topic = 'PCY_topic'
+pcy_topic = 'PCY'
 
 # Create Kafka consumer
 consumer = KafkaConsumer(pcy_topic, bootstrap_servers=bootstrap_servers)
@@ -91,7 +91,7 @@ window_size = 100
 frequent_singles, frequent_pairs, frequent_triplets = pcy_sliding_window(consumer, num_buckets, hash_support, min_support, window_size)
 
 # Output results in a txt file
-output_file = 'PCY_frequent_itemsets_sliding_window.txt'
+output_file = 'output/pcy_frequent_itemsets.txt'
 with open(output_file, 'w') as file:
     file.write("Frequent Singles:\n")
     for item in frequent_singles:

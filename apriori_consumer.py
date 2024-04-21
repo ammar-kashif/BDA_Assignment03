@@ -90,13 +90,13 @@ def consume_dataset(consumer, output_path):
 
 # Kafka settings
 bootstrap_servers = 'localhost:9092'
-apriori_topic = 'Apriori_topic'
+topic = 'Apriori'
 
 # Create Kafka consumer
-consumer = KafkaConsumer(apriori_topic, bootstrap_servers=bootstrap_servers)
+consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers)
 
 # Output path for saving frequent itemsets
-output_path = 'frequent_itemsets.txt'
+output_path = 'output/apriori_frequent_itemsets.txt'
 
 # Consume dataset and generate frequent itemsets
 consume_dataset(consumer, output_path)

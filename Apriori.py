@@ -91,7 +91,7 @@ def generate_association_rules(freq_pairs, transactions, min_confidence):
 
 # Calculating frequent itemsets
 data_path = "first_100_rows.json"
-output_path = "output.txt"
+output_path = "Apriori_output.txt"
 
 # Read transactions
 transactions = extract_transactions(data_path)

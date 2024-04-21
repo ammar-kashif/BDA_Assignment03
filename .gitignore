@@ -4,4 +4,7 @@ README.md
 preprocessed_dataset.json
 preprocessed_dataset1.json
 output.txt
-asscociation_rules.txt
+association_rules.txt
+first_100_rows.json
+test.ipynb
+PCY_frequent_itemsets.txt

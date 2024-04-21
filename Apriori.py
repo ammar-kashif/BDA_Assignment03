@@ -1,6 +1,7 @@
 import json
 from itertools import combinations
 from collections import defaultdict, deque
+from itertools import combinations
 
 class SlidingApriori:
     def __init__(self, size=100):
@@ -29,8 +30,7 @@ class SlidingApriori:
                 if self.itemsets[itemset] <= 0:
                     del self.itemsets[itemset]
 
-    # Genrating frequent itemsets
-    def generate_itemsets(self, transactions, min_supp):
+    def generate_itemsets(self, transactions, min_support):
         pair_counts = {}
         total_transactions = len(transactions)
         for transaction in transactions:
@@ -41,10 +41,9 @@ class SlidingApriori:
                 else:
                     pair_counts[pair] = 1
 
-        # Only keeping the pairs that meet the minimum support
-        return {
-            pair: count for pair, count in pair_counts.items() if count >= min_supp
-        }
+    # Apply minimum support threshold
+        return {pair: count for pair, count in pair_counts.items() if count >= min_support}
+        
 
 
 def extract_transactions(file_path):
@@ -69,8 +68,8 @@ def generate_association_rules(freq_pairs, transactions, min_confidence):
 
     for pair, pair_support in item_support.items():
         items = list(pair)
-        item1, item2 = sorted(items)  
-        # Getting support for each item
+        item1, item2 = sorted(items)  # Sort items to ensure consistent order
+        # Support of individual items
         support1 = sum(1 for t in transactions if item1 in t) / total_transactions
         support2 = sum(1 for t in transactions if item2 in t) / total_transactions
 
@@ -78,13 +77,11 @@ def generate_association_rules(freq_pairs, transactions, min_confidence):
         confidence1to2 = pair_support / support1
         confidence2to1 = pair_support / support2
 
-        # Adding the rule if it meets the minconfidence
+        # Only add rule if confidence is high enough and not already added
         if confidence1to2 >= min_confidence:
-            rules.add((item1, item2, confidence1to2))  
+            rules.add((item1, item2, confidence1to2))  # Add sorted rule
         if confidence2to1 >= min_confidence and (item2, item1) not in rules:
-            rules.add(
-                (item2, item1, confidence2to1)
-            ) 
+            rules.add((item2, item1, confidence2to1))  # Check if reverse isn't already added
 
     return rules
 
@@ -123,7 +120,6 @@ else:
     
     # Saving the rules to a file
     with open("association_rules.txt", "w") as file:
-        file.write("If\tThen\tConfidence\n")
-        for if_item, then_item, confidence in association_rules:
-            file.write(f"{if_item}\t{then_item}\t{confidence:.2f}\n")
-
+        file.write("Antecedent\tConsequent\tConfidence\n")
+        for antecedent, consequent, confidence in association_rules:
+            file.write(f"{antecedent}\t{consequent}\t{confidence:.2f}\n")

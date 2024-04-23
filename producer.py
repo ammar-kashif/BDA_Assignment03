@@ -19,7 +19,6 @@ def produce_dataset(file_path, producer, topics, num_objects=20):
                 if i + num_objects >= total_objects:
                     print("End of dataset reached.")
                     break
-            producer.send(topic, json.dumps(data).encode('utf-8'))
             print("Dataset sent successfully")
     except FileNotFoundError:
         print(f"File '{file_path}' not found.")

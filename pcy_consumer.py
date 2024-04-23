@@ -106,7 +106,7 @@ def write_association_rules(rules, file):
 # Set up Kafka consumer and PCY instance
 bootstrap_servers = 'localhost:9092'
 topic = 'PCY'
-consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers)
+consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers, auto_offset_reset='latest')
 output_paths = {
     'itemsets': 'output/pcy_frequent_itemsets.txt',
     'rules': 'output/pcy_association_rules.txt'

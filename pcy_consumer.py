@@ -19,6 +19,7 @@ class SlidingPCY:
         return hash(itemset) % self.num_buckets
 
     def add_transaction(self, transaction):
+        # Adding transaction to the window
         self.window.append(transaction)
         for item in transaction:
             self.single_counts[item] += 1
@@ -32,6 +33,7 @@ class SlidingPCY:
                 self.triplet_counts[triplet] += 1
 
     def remove_transaction(self, transaction):
+        # Removing transaction from the window
         self.window.remove(transaction)
         for item in transaction:
             self.single_counts[item] -= 1
@@ -44,6 +46,7 @@ class SlidingPCY:
 
     def process_transactions(self, transactions):
         for transaction in transactions:
+            # Process transactions
             self.add_transaction(transaction)
             if len(self.window) > self.window_size:
                 self.remove_transaction(self.window[0])
@@ -55,23 +58,60 @@ class SlidingPCY:
     def filter_items(self, counts):
         return {itemset: count for itemset, count in counts.items() if count >= self.min_support}
 
+    def generate_association_rules(self, min_confidence):
+        
+        association_rules = []
+        # Generate association rules
+        for pair, support in self.pair_counts.items():
+            antecedent, consequent = tuple(pair)
+            antecedent_support = self.single_counts[antecedent]
+            if antecedent_support == 0:
+                continue
+            confidence = support / antecedent_support
+            if confidence >= min_confidence:
+                association_rules.append((antecedent, consequent, confidence))
+
+        # Generate association rules for frequent triplets
+        for triplet, support in self.triplet_counts.items():
+            for i in range(1, len(triplet)):
+                for antecedent in combinations(triplet, i):
+                    antecedent = tuple(sorted(antecedent))
+                    consequent = tuple(sorted(set(triplet) - set(antecedent)))
+                    antecedent_support = self.pair_counts[antecedent]
+                    if antecedent_support == 0:
+                        continue
+                    confidence = support / antecedent_support
+                    if confidence >= min_confidence:
+                        association_rules.append((antecedent, consequent, confidence))
+
+        return association_rules
+
 def consume_dataset(consumer, sliding_pcy):
     for message in consumer:
         dataset = json.loads(message.value.decode('utf-8'))
         transactions = [[item["asin"]] + item.get("related", []) for item in dataset]
         frequent_singles, frequent_pairs, frequent_triplets = sliding_pcy.process_transactions(transactions)
 
-        # Output results
-        output_results(frequent_singles, frequent_pairs, frequent_triplets)
+        # Generate association rules
+        min_confidence = 0.5
+        association_rules = sliding_pcy.generate_association_rules(min_confidence)
 
-def output_results(singles, pairs, triplets):
-    output_path = 'output/pcy_frequent_itemsets.txt'
+        # Output frequent items and association rules
+        output_results(frequent_singles, frequent_pairs, frequent_triplets, association_rules)
 
-    # Clear output file when consumer starts
-    with open(output_path, "w") as file:
-        file.write("")
+def output_results(singles, pairs, triplets, association_rules):
+    frequent_itemsets_output_path = 'pcy_frequent_itemsets.txt'
+    association_rules_output_path = 'PCY_Association_Rules.txt'
 
-    with open(output_path, 'w') as file:
+    # Clear output files when consumer starts
+    with open(frequent_itemsets_output_path, "w") as frequent_file:
+        frequent_file.write("")
+
+    with open(association_rules_output_path, "w") as association_file:
+        association_file.write("")
+
+    # Writing frequent itemsets to the frequent itemsets output file
+    with open(frequent_itemsets_output_path, 'w') as file:
         file.write("Frequent Singles:\n")
         for item, count in singles.items():
             file.write(f"{item}\t{count}\n")
@@ -84,9 +124,16 @@ def output_results(singles, pairs, triplets):
         for triplet, count in triplets.items():
             file.write(f"{triplet}\t{count}\n")
 
-    print("Results saved to", output_path)
+    # Writing association rules to the association rules output file
+    with open(association_rules_output_path, 'w') as file:
+        file.write("Association Rules:\n")
+        for antecedent, consequent, confidence in association_rules:
+            file.write(f"Antecedent: {antecedent}, Consequent: {consequent}, Confidence: {confidence}\n")
 
-# Kafka settings and consumer initialization
+    print("Frequent itemsets saved to", frequent_itemsets_output_path)
+    print("Association rules saved to", association_rules_output_path)
+
+
 bootstrap_servers = 'localhost:9092'
 topic = 'PCY'
 consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers)

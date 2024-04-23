@@ -6,8 +6,6 @@ import time
 def produce_dataset(file_path, producer, topics, batch_size=20):
     try:
         with open(file_path, "r") as file:
-            # data = json.load(file)
-            # total_objects = len(data)
             objects = ijson.items(file, 'item')  # Assuming the JSON array is the root element
             batch = []
             for obj in objects:
@@ -23,19 +21,6 @@ def produce_dataset(file_path, producer, topics, batch_size=20):
                 for topic in topics:
                     producer.send(topic, json.dumps(batch).encode('utf-8'))
                     producer.flush()
-            # for i in range(0, total_objects, num_objects):
-            #     # Send chunks of num_objects each time
-            #     chunk = data[i:i+num_objects]
-            #     chunk_data = json.dumps(chunk).encode('utf-8')
-            #     for topic in topics:
-            #         producer.send(topic, chunk_data)
-            #         producer.flush()  # Ensure data is sent immediately
-            #         print(f"Sent {num_objects} objects to {topic}")
-            #     time.sleep(1)  # Sleep to simulate time delay between sends
-            #     if i + num_objects >= total_objects:
-            #         print("End of dataset reached.")
-            #         break
-            # print("Dataset sent successfully")
     except FileNotFoundError:
         print(f"File '{file_path}' not found.")
     except Exception as e:

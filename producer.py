@@ -34,7 +34,7 @@ topics = ['Apriori', 'PCY', 'Custom']
 producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 
 # Path to the dataset file
-dataset_file = 'data/preprocessed_dataset.json'
+dataset_file = 'data/preprocessed_dataset_test.json'
 
 # Infinite loop to continuously send the dataset
 while True:

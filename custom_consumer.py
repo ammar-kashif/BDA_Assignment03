@@ -23,7 +23,7 @@ class TrendAnalysisConsumer:
         products = json.loads(message.value.decode('utf-8'))  # Assuming the entire message is an array of products
         
         for data in products:
-            current_brand = data.get('brand', '').strip() or "No Brand"
+            current_brand = data.get('brand', '').strip() or "The Triple A Gs"
 
             # Update brand count in MongoDB in real time
             self.brands_collection.update_one(

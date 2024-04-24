@@ -41,7 +41,6 @@ class SlidingApriori:
         # Save frequent itemsets
         frequent_itemsets = {itemset: count for itemset, count in self.itemsets.items() if count >= min_support}
         for itemset, count in frequent_itemsets.items():
-            print("this")
             self.itemsets_collection.update_one(
                 {'itemset': itemset},
                 {'$set': {'count': count}},
@@ -51,7 +50,6 @@ class SlidingApriori:
         # Save association rules
         rules = self.generate_association_rules(min_confidence)
         for rule in rules:
-            print("that")
             self.rules_collection.update_one(
                 {'rule': rule},
                 {'$set': {'confidence': rule[2]}},

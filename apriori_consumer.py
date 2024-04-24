@@ -15,8 +15,10 @@ class SlidingApriori:
         self.itemsets = defaultdict(int)
 
     def clear_collections(self):
+        # clearing the itemsets and rules collections
         self.itemsets_collection.delete_many({})
         self.rules_collection.delete_many({})
+
         print("Cleared itemsets and rules collections in MongoDB.")
 
     def add_transaction(self, transaction):
@@ -30,7 +32,9 @@ class SlidingApriori:
         self.update_counts(old_transaction, -1)
 
     def update_counts(self, transaction, inc):
-        max_length = 3  # typically, 2 or 3 might be practical
+        max_length = 3
+
+        # update the counts of itemsets
         for r in range(1, min(max_length + 1, len(transaction) + 1)):
             for itemset in combinations(transaction, r):
                 self.itemsets[tuple(sorted(itemset))] += inc
@@ -38,7 +42,7 @@ class SlidingApriori:
                     del self.itemsets[tuple(sorted(itemset))]
 
     def save_to_db(self, min_support, min_confidence):
-        # Save frequent itemsets
+        # save frequent itemsets to MongoDB
         frequent_itemsets = {itemset: count for itemset, count in self.itemsets.items() if count >= min_support}
         for itemset, count in frequent_itemsets.items():
             self.itemsets_collection.update_one(
@@ -47,7 +51,7 @@ class SlidingApriori:
                 upsert=True
             )
 
-        # Save association rules
+        # save association rules to MongoDB
         rules = self.generate_association_rules(min_confidence)
         for rule in rules:
             self.rules_collection.update_one(
@@ -58,6 +62,8 @@ class SlidingApriori:
 
     def generate_association_rules(self, min_confidence):
         association_rules = []
+
+        # generate association rules from frequent itemsets
         for itemset, support in self.itemsets.items():
             if len(itemset) > 1:
                 for i in range(1, len(itemset)):
@@ -68,24 +74,41 @@ class SlidingApriori:
                             confidence = support / antecedent_support
                             if confidence >= min_confidence:
                                 association_rules.append((antecedent, consequent, confidence))
+        
+        # return the association rules
         return association_rules
 
-def consume_dataset(topic, bootstrap_servers, mongo_uri, db_name):
-    consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers, auto_offset_reset='latest')
-    sliding_apriori = SlidingApriori(mongo_uri, db_name)
-    sliding_apriori.clear_collections()  # Clear collections each time the consumer starts
+def consume_dataset(consumer, mongo_uri, db_name):
+    # declare parameters
+    min_support = 3
+    min_confidence = 0.5
 
+    # initialize the SlidingApriori class
+    sliding_apriori = SlidingApriori(mongo_uri, db_name)
+    
+    # clear the collections in MongoDB
+    sliding_apriori.clear_collections()
+
+    # consume the dataset
     for message in consumer:
         dataset = json.loads(message.value.decode("utf-8"))
         transactions = [[item["asin"]] + item.get("related", []) for item in dataset]
         for transaction in transactions:
             sliding_apriori.add_transaction(transaction)
 
-        # Save results to MongoDB
-        sliding_apriori.save_to_db(3, 0.5)  # min_support and min_confidence as example
+        # save results to MongoDB
+        sliding_apriori.save_to_db(min_support, min_confidence)
         print("Saved frequent itemsets and association rules to MongoDB.")
 
-    consumer.close()
+# declare parameters
+bootstrap_servers = 'localhost:9092'
+mongo_uri = 'mongodb://localhost:27017'
+topic = 'Apriori'
 
-# Example usage
-consume_dataset('Apriori', 'localhost:9092', 'mongodb://localhost:27017', 'Apriori')
+# initialize the consumer
+consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers, auto_offset_reset='latest')
+
+# start consuming the dataset
+consume_dataset(consumer, 'mongodb://localhost:27017', topic)
+
+consumer.close()

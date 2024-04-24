@@ -6,39 +6,42 @@ import time
 def produce_dataset(file_path, producer, topics, batch_size=20):
     try:
         with open(file_path, "r") as file:
-            objects = ijson.items(file, 'item')  # Assuming the JSON array is the root element
+            # read the JSON file in a streaming manner
+            objects = ijson.items(file, 'item')
             batch = []
+
+            # loop through the objects and send them in batches
             for obj in objects:
                 batch.append(obj)
                 if len(batch) >= batch_size:
+                    # send the batch to all topics
                     for topic in topics:
                         producer.send(topic, json.dumps(batch).encode('utf-8'))
                         producer.flush()
                     batch = []
                     print(f"Sent {batch_size} objects to {topics}")
                     time.sleep(5)
-            if batch:  # Send the last partial batch if there is any
+
+            # send the last partial batch if there is any
+            if batch:
                 for topic in topics:
                     producer.send(topic, json.dumps(batch).encode('utf-8'))
                     producer.flush()
+
     except FileNotFoundError:
         print(f"File '{file_path}' not found.")
     except Exception as e:
         print(f"An error occurred: {e}")
 
-# Kafka settings
+# declare parameters
 bootstrap_servers = 'localhost:9092'
-# apriori_topic = 'PCY_topic'
+dataset_file = 'data/preprocessed_dataset.json'
 topics = ['Apriori', 'PCY', 'Custom']
 
-# Create Kafka producer
+# intialize the producer
 producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 
-# Path to the dataset file
-dataset_file = 'data/preprocessed_dataset.json'
+# start producing the dataset
+produce_dataset(dataset_file, producer, topics)
 
-# Infinite loop to continuously send the dataset
-while True:
-    produce_dataset(dataset_file, producer, topics)
-
-    time.sleep(1)  # Adjust the sleep duration as needed
+producer.close()

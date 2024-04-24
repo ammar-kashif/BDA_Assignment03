@@ -16,7 +16,7 @@ def produce_dataset(file_path, producer, topics, batch_size=20):
                         producer.flush()
                     batch = []
                     print(f"Sent {batch_size} objects to {topics}")
-                    time.sleep(2)
+                    time.sleep(5)
             if batch:  # Send the last partial batch if there is any
                 for topic in topics:
                     producer.send(topic, json.dumps(batch).encode('utf-8'))
